@@ -13,39 +13,54 @@ ser = serial.Serial(puerto_serial, baud_rate, timeout=1)
 conn = sqlite3.connect('tateti.db')
 c = conn.cursor()
 
+# Variable para llevar el conteo de partidas
+id_partida = 0
+
+# Variable para marcar si la partida ha terminado
+partida_finalizada = False
+
 while True:
     try:
         # Leer datos del puerto serie
         if ser.in_waiting > 0:
             data = ser.readline().decode().strip()
-            print(f"Datos recibidos: {data}")  # Depuración para ver qué se está recibiendo
+            print(f"Datos recibidos: {data}")
 
-            # Verificar si el formato es el esperado
-            if 'mov: ' in data:
+            # Verificar si el mensaje es "fin del juego" y la partida no ha sido marcada como finalizada
+            if data == "FIN de JUEGO" and not partida_finalizada:
+                id_partida += 1  # Incrementar el ID de partida
+                partida_finalizada = True  # Marcar la partida como finalizada
+                print(f"Fin del juego detectado. Incrementando ID_Partida a {id_partida}. Esperando una nueva partida.")
+
+            # Procesar los movimientos de una nueva partida si el formato es correcto
+            elif 'mov: ' in data:
+                # Marcar que la nueva partida ha comenzado
+                partida_finalizada = False
+
                 partes = data.split('mov: ')
-                
-                if len(partes) == 2:  # Asegurarse de que hay dos partes para desempaquetar
+
+                if len(partes) == 2:
                     ID_Jugador, movimiento_data = partes
-                    movimiento_partes = movimiento_data.split(':')
+                    movimiento_partes = movimiento_data.split(',')
 
-                    if len(movimiento_partes) == 2:  # Verificar si hay dos partes (ID_Ficha y Posicion)
+                    if len(movimiento_partes) == 2:
                         ID_Ficha, posicion = movimiento_partes
-                        
-                        if posicion.isdigit():  # Asegurarse de que la posición sea un número
-                            Posicion = int(posicion)
 
-                            # Obtener el timestamp actual
+                        if posicion.isdigit():
+                            Posicion = int(posicion)
                             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-                            # Insertar datos en la base de datos con ID_Jugador, ID_Ficha y la posición final
-                            c.execute('''
-                                INSERT INTO Movimientos (ID_Jugador, ID_Ficha, Posicion, Timestamp)
-                                VALUES (?, ?, ?, ?)
-                            ''', (ID_Jugador, ID_Ficha, Posicion, timestamp))
+                            # Determinar el ID_Jugador
+                            jugador_id = 0 if ID_Ficha[0] == 'R' else 1
 
-                            # Confirmar los cambios
+                            # Insertar datos en la base de datos
+                            c.execute('''
+                                INSERT INTO Movimientos (ID_Jugador, ID_Ficha, Posicion, Timestamp, ID_Partida)
+                                VALUES (?, ?, ?, ?, ?)
+                            ''', (jugador_id, ID_Ficha, Posicion, timestamp, id_partida))
+
                             conn.commit()
-                            print(f"Datos almacenados: Jugador: {ID_Jugador}, Ficha: {ID_Ficha}, Posición Final: {Posicion}, Timestamp: {timestamp}")
+                            print(f"Datos almacenados: Jugador: {jugador_id}, Ficha: {ID_Ficha}, Posición: {Posicion}, Timestamp: {timestamp}, ID_Partida: {id_partida}")
                         else:
                             print(f"Error: La posición no es un número válido: {posicion}")
                     else:
@@ -53,8 +68,8 @@ while True:
                 else:
                     print(f"Error: Formato de jugador incorrecto: {data}")
             else:
-                print(f"Advertencia: El formato no contiene 'mov: ', datos ignorados.")
-    
+                print(f"Advertencia: Formato desconocido: {data}")
+
     except KeyboardInterrupt:
         print("Interrupción del teclado. Cerrando...")
         break
