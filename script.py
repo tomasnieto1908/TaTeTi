@@ -33,7 +33,7 @@ while True:
                 print(f"Fin del juego detectado. Incrementando ID_Partida a {id_partida}. Esperando una nueva partida.")
 
             # Procesar los movimientos de una nueva partida si el formato es correcto
-            elif 'mov: ' in data:
+            elif 'mov: ' in data or 'lo movi a tecla: ' in data:
                 # Marcar que la nueva partida ha comenzado
                 partida_finalizada = False
 
