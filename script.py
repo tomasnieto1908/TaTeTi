@@ -48,7 +48,7 @@ while True:
 
                         if posicion.isdigit():
                             Posicion = int(posicion)
-                            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            timestamp = datetime.now().strftime('%Y-%m-%d')
 
                             # Determinar el ID_Jugador
                             jugador_id = 0 if ID_Ficha[0] == 'R' else 1
